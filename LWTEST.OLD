@@ -1,0 +1,187 @@
+/* lwtest.c
+   This module creates a list window for test purposes
+ */
+
+
+
+#define INCL_WIN
+#define INCL_GPI
+#include <os2.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "listwin.h"
+#include "Error.h"
+
+char pszStr[] = "NewProc X,Y";
+
+
+
+HWND CreateTestWindow (HWND hwndParent, PSZ pszTitle)
+   {
+   ULONG fFlags;
+   HWND  hFrameWnd, hMainWnd;
+   HAB   hab;
+
+   hab = WinQueryAnchorBlock (hwndParent);
+   fFlags =FCF_MINMAX | FCF_SIZEBORDER | FCF_SYSMENU |
+           FCF_SHELLPOSITION | FCF_TASKLIST | FCF_TITLEBAR;
+
+   hMainWnd = WinCreateStdWindow (hwndParent,
+              WS_VISIBLE | FS_SIZEBORDER | FS_TASKLIST, &fFlags,
+              szLWFrameClass, pszTitle, WS_VISIBLE | WS_CLIPCHILDREN,
+              (HMODULE) NULL, LWID_FRAME, &hFrameWnd);
+   if (hMainWnd == NULL)
+      ErrDisplayWindowError (hab, NULL);
+   return hFrameWnd;
+   }
+
+
+
+
+int GetTextStr  (HWND   hChildWnd, USHORT uRow, USHORT uCol, PSZ *ppszText)
+   {
+   *ppszText = pszStr;
+   (*ppszText)[ 8] = (unsigned char) 'A' + (unsigned char) uRow;
+   (*ppszText)[10] = (unsigned char) 'A' + (unsigned char) uCol;
+   return OK;
+   }
+
+
+
+int InitDraw (HWND hwnd, HPS hps)
+   {
+   GpiCreateLogColorTable(hps, 0L, LCOLF_RGB, 0L, 0L, NULL);
+   return 0;
+   }
+
+              
+// { hps,uRow,uCol,prclPos,lFColor,lBColor,ufFlags} DRAWINFO;
+int DrawRect (HWND hwnd, PDRAWINFO pdi)
+   {
+   POINTL     ptl;
+   AREABUNDLE abnd;
+   
+   abnd.lColor = (ULONG)pdi->uRow << 10 | (ULONG)pdi->uCol << 2;
+   GpiSetAttrs(pdi->hps, PRIM_AREA, ABB_COLOR, 0L, (PBUNDLE)&abnd);
+   ptl.x = pdi->prclPos->xLeft;
+   ptl.y = pdi->prclPos->yBottom;
+   GpiMove (pdi->hps, &ptl);
+   ptl.x = pdi->prclPos->xRight-1;
+   ptl.y = pdi->prclPos->yTop-1;
+   GpiBox (pdi ->hps, DRO_FILL, &ptl, 0L, 0L);
+
+   return 0;
+   }
+
+
+
+
+
+
+
+
+
+
+
+main (int argc, char *argv[])
+   {
+   HAB      hab; 
+   HMQ      hmq;
+   QMSG     qmsg;
+   HWND     hFrameWnd0, hFrameWnd1;
+   USHORT   urow = 64, ucol = 64;
+   USHORT   uFlags = LWS_HSCROLL | LWS_VSPLIT |
+                     LWS_VSCROLL | LWS_HSPLIT | LWS_SPLITATTOP;
+
+                  //  USHORT uClientRows;
+                  //  USHORT uClientCols;
+                  //  USHORT uLabelCols;    /* may be zero */
+                  //  USHORT uYClientSize;  /* may be zero */
+                  //  USHORT uYLabelSize;   /* may be zero */
+                  //  USHORT uXScrollInc;   /* may be zero */
+                  //  USHORT ufOptions;
+
+   LWINIT   lwinit = {urow, ucol, 0, 0, 0, 50, uFlags};
+   EDT      edtC[64], edtL[64];
+   PSZ      aszLabels[64];
+   char     szTmp[64];
+   USHORT i;
+
+   hab = WinInitialize (0);
+   hmq = WinCreateMsgQueue (hab ,0);
+
+   /*
+    *  REGISTER LISTWIN CLASSES
+    */
+   if (LWRegister (hab) == NOT_OK)
+      ErrDisplayWindowError (hab, NULL);
+
+
+   /*
+    *  CREATE TEST WINDOWS
+    */
+   hFrameWnd0 = CreateTestWindow (HWND_DESKTOP, "window 0");
+   hFrameWnd1 = CreateTestWindow (HWND_DESKTOP, "window 1");
+
+
+   /*
+    *  CREATE INIT STRUCTURES1
+    */
+   for (i = 0; i < ucol; i++)
+      {
+      AssignRcl (&(edtC[i].rclPos), i*10, 0, (i+1)*10, 10);
+      AssignRcl (&(edtL[i].rclPos), 0, 0, 0, 0);
+      edtC[i].lFColor = CLR_DARKBLUE;
+      edtC[i].ufFlags = DT_VCENTER | DT_LEFT;
+      edtL[i].lFColor = CLR_WHITE;
+      edtL[i].ufFlags = DT_VCENTER | DT_CENTER;
+      sprintf (szTmp, "%d", i);
+      aszLabels[i] = strdup (szTmp);
+      }
+
+   LWInitClientDraw (hFrameWnd0, InitDraw, DrawRect); 
+   LWInit (hFrameWnd0, &lwinit, edtC, edtL, aszLabels, GetTextStr);
+   LWChangeColor (hFrameWnd0, LWC_SPLITMIN,CLR_BLACK); 
+   LWChangeColor (hFrameWnd0, LWC_SPLITMAX,CLR_WHITE); 
+   LWChangeColor (hFrameWnd0, LWC_CLIENT,CLR_RED); 
+   LWRedraw (hFrameWnd0);
+
+   for (i = 0; i < ucol; i++)
+      free (aszLabels[i]);
+
+
+
+
+   /*
+    *  CREATE INIT STRUCTURES 2
+    */
+   for (i = 0; i < ucol; i++)
+      {
+      AssignRcl (&(edtC[i].rclPos), i*100, 17, (i+1)*100, 32);
+      AssignRcl (&(edtL[i].rclPos), i*100, 17, (i+1)*100, 32);
+      edtC[i].lFColor = CLR_DARKBLUE;
+      edtC[i].ufFlags = DT_VCENTER | DT_LEFT;
+      edtL[i].lFColor = CLR_WHITE;
+      edtL[i].ufFlags = DT_VCENTER | DT_CENTER;
+      sprintf (szTmp, "Column %d", i);
+      aszLabels[i] = strdup (szTmp);
+      }
+   AssignRcl (&(edtC[i-1].rclPos), 10, 0, 200, 16);
+   AssignRcl (&(edtL[i-1].rclPos), 10, 0, 200, 16);
+
+   LWInit (hFrameWnd1, &lwinit, edtC, edtL, aszLabels, GetTextStr);
+
+   for (i = 0; i < ucol; i++)
+      free (aszLabels[i]);
+
+
+   while (WinGetMsg (hab, &qmsg, NULL, 0, 0))
+      WinDispatchMsg (hab, &qmsg);
+
+   WinDestroyWindow (hFrameWnd0);
+   WinDestroyWindow (hFrameWnd1);
+   WinDestroyMsgQueue (hmq);
+   WinTerminate (hab);
+   return OK;
+   }

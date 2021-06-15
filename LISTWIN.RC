@@ -1,0 +1,5 @@
+#include "lwsplit.h"
+
+POINTER PTR_HORZ   hsplit.ptr
+POINTER PTR_VERT   vsplit.ptr
+POINTER PTR_HV     hvsplit.ptr

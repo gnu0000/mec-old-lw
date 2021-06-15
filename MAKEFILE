@@ -1,0 +1,32 @@
+all: lwtest.exe
+
+.c.obj:
+   cl $(CFLAGSL) $*.c 
+
+
+lwframe.obj  : lwframe.c lwframe.h listwin.h
+
+lwsplit.obj  : lwsplit.c lwsplit.h listwin.h
+
+lwutil.obj   : lwutil.c lwutil.h listwin.h
+
+lwtest.obj   : lwtest.c listwin.h
+
+error.obj    : error.c error.h listwin.h
+
+lwclient.obj : lwclient.c lwclient.h listwin.h
+
+lwselect.obj : lwselect.c lwselect.h listwin.h
+
+
+listwin.res : listwin.rc lwsplit.h hsplit.ptr vsplit.ptr hvsplit.ptr
+   rc -r listwin
+
+
+lwtest.lnk : makefile
+    makelink lwtest lwtest lwframe lwclient lwsplit lwutil error lwselect
+ 
+lwtest.exe : lwtest.obj lwtest.lnk lwtest.def lwframe.obj lwsplit.obj lwutil.obj error.obj lwclient.obj listwin.res lwselect.obj
+    link @lwtest.lnk
+    rc listwin.res lwtest.exe
+
